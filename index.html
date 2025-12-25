@@ -65,6 +65,13 @@
                 margin: 1cm;
             }
         }
+        
+        /* Table Input Style */
+        .bonus-input::-webkit-inner-spin-button, 
+        .bonus-input::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
     </style>
 </head>
 <body class="text-slate-800">
@@ -108,8 +115,9 @@
         <!-- VIEW 1: Dashboard / List View -->
         <div id="view-list" class="transition-opacity duration-300">
             
-            <!-- Stats Summary (Mobile Optimized: Grid 2x2) -->
+            <!-- Stats Summary (Updated for Payment Totals) -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+                <!-- Total Employees -->
                 <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4">
                     <div class="p-2 md:p-3 bg-blue-100 text-blue-600 rounded-lg"><i class="fa-solid fa-users text-lg md:text-xl"></i></div>
                     <div>
@@ -117,25 +125,28 @@
                         <h3 class="text-xl md:text-2xl font-bold" id="stat-total">0</h3>
                     </div>
                 </div>
+                <!-- Total Salary -->
                 <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4">
-                    <div class="p-2 md:p-3 bg-green-100 text-green-600 rounded-lg"><i class="fa-solid fa-money-bill-wave text-lg md:text-xl"></i></div>
+                    <div class="p-2 md:p-3 bg-indigo-100 text-indigo-600 rounded-lg"><i class="fa-solid fa-money-bill-wave text-lg md:text-xl"></i></div>
                     <div>
                         <p class="text-xs md:text-sm text-slate-500">เงินเดือนรวม</p>
-                        <h3 class="text-xl md:text-2xl font-bold" id="stat-salary">0</h3>
+                        <h3 class="text-lg md:text-xl font-bold text-indigo-700" id="stat-salary">0</h3>
                     </div>
                 </div>
+                <!-- Total Bonus (New) -->
                 <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4">
                     <div class="p-2 md:p-3 bg-orange-100 text-orange-600 rounded-lg"><i class="fa-solid fa-gift text-lg md:text-xl"></i></div>
                     <div>
-                        <p class="text-xs md:text-sm text-slate-500">โบนัสเฉลี่ย</p>
-                        <h3 class="text-xl md:text-2xl font-bold" id="stat-bonus">0%</h3>
+                        <p class="text-xs md:text-sm text-slate-500">โบนัสรวม</p>
+                        <h3 class="text-lg md:text-xl font-bold text-orange-600" id="stat-bonus-amount">0</h3>
                     </div>
                 </div>
-                <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4">
-                    <div class="p-2 md:p-3 bg-purple-100 text-purple-600 rounded-lg"><i class="fa-solid fa-briefcase text-lg md:text-xl"></i></div>
+                <!-- Grand Total (New) -->
+                <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 ring-2 ring-green-100">
+                    <div class="p-2 md:p-3 bg-green-100 text-green-600 rounded-lg"><i class="fa-solid fa-coins text-lg md:text-xl"></i></div>
                     <div>
-                        <p class="text-xs md:text-sm text-slate-500">อายุงานเฉลี่ย</p>
-                        <h3 class="text-xl md:text-2xl font-bold" id="stat-years">0 ปี</h3>
+                        <p class="text-xs md:text-sm text-slate-500">ยอดจ่ายสุทธิ</p>
+                        <h3 class="text-xl md:text-2xl font-bold text-green-700" id="stat-grand-total">0</h3>
                     </div>
                 </div>
             </div>
@@ -155,10 +166,11 @@
                 <table class="min-w-full divide-y divide-slate-200">
                     <thead class="bg-slate-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ชื่อ-นามสกุล</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-1/4">ชื่อ-นามสกุล</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ตำแหน่ง</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">เงินเดือน</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-1/4">หมายเหตุ</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider w-32">โบนัสสุทธิ (%)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider max-w-[150px]">หมายเหตุ</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">จัดการ</th>
                         </tr>
                     </thead>
@@ -168,7 +180,7 @@
                 </table>
             </div>
 
-            <!-- Mobile Card View (Optimized) -->
+            <!-- Mobile Card View -->
             <div class="md:hidden grid grid-cols-1 gap-3" id="card-grid">
                 <!-- JS renders cards here -->
             </div>
@@ -209,9 +221,8 @@
 
                 <!-- Profile Section -->
                 <div class="flex flex-col sm:flex-row gap-6 md:gap-8 mb-8 items-center sm:items-start">
-                    <!-- แก้ไข: เปลี่ยนจาก Div วงกลม เป็น Img สำหรับโลโก้ -->
+                    <!-- Img สำหรับโลโก้ -->
                     <div class="w-24 h-24 md:w-32 md:h-32 flex-shrink-0 bg-white rounded-full p-2 shadow-md border border-slate-200 flex items-center justify-center overflow-hidden">
-                        <!-- รูปโลโก้จะแสดงตรงนี้ -->
                         <img id="detail-logo" src="" alt="Company Logo" class="w-full h-full object-contain">
                     </div>
                     <div class="flex-1 text-center sm:text-left w-full">
@@ -322,7 +333,7 @@
                     </div>
                 </div>
 
-                <!-- Reference Criteria Section (New) -->
+                <!-- Reference Criteria Section -->
                 <div class="mt-6 mb-8 pt-6 border-t border-slate-200">
                     <h4 class="text-sm font-bold text-slate-700 mb-3 bg-slate-100 p-2 rounded inline-block">
                         <i class="fa-solid fa-circle-info text-slate-500 mr-1"></i> เกณฑ์การพิจารณาโบนัส
@@ -398,10 +409,7 @@
     <script>
         const app = {
             data: [],
-            // Default Demo Data (for first time user)
             currentScriptUrl: localStorage.getItem('hr_script_url') || 'https://script.google.com/macros/s/AKfycbzTdJPNufKF0cGr7ldQ4sEZffijESKivUOfs1ALat45-tkPeWFlrpdiFykXhUFdNsQWrg/exec',
-            
-            // [แก้ไข] ใส่ URL โลโก้ของคุณที่นี่ (หรือใช้ Link รูปภาพออนไลน์)
             companyLogo: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png', 
 
             demoData: [
@@ -412,14 +420,9 @@
             currentDetailId: null,
 
             init() {
-                // Initialize search listener
                 document.getElementById('search-input').addEventListener('input', (e) => this.filterData(e.target.value));
-                
-                // Set print date
                 const today = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
                 document.getElementById('print-date').innerText = `วันที่พิมพ์: ${today}`;
-
-                // Fetch data on load
                 this.refreshData();
             },
 
@@ -478,23 +481,21 @@
                 else if (years >= 1) basePercent = 40;
                 else basePercent = 0;
 
-                // 2. Deduction % based on Leave Days (Subtract directly from Base Percent)
-                // Updated Logic based on new requirements
+                // 2. Deduction % based on Leave Days
                 let deductionPoint = 0;
                 if (leave > 30) deductionPoint = 60;       // > 30
                 else if (leave >= 28) deductionPoint = 55; // 28-30
                 else if (leave >= 25) deductionPoint = 50; // 25-27
                 else if (leave >= 22) deductionPoint = 40; // 22-24
                 else if (leave >= 19) deductionPoint = 30; // 19-21
-                else if (leave >= 16) deductionPoint = 25; // 16-18 (Updated to 25%)
-                else if (leave >= 13) deductionPoint = 20; // 13-15 (Updated to 20%)
-                else if (leave >= 10) deductionPoint = 15; // 10-12 (Updated to 15%)
+                else if (leave >= 16) deductionPoint = 25; // 16-18
+                else if (leave >= 13) deductionPoint = 20; // 13-15
+                else if (leave >= 10) deductionPoint = 15; // 10-12
                 else deductionPoint = 0;                   // 0-9
 
                 // 3. Calculation
-                // Formula: Bonus = Salary * (Base% - Deduction%)
                 let effectivePercent = basePercent - deductionPoint;
-                if (effectivePercent < 0) effectivePercent = 0; // Prevent negative bonus
+                if (effectivePercent < 0) effectivePercent = 0;
 
                 const finalBonusAmount = salary * (effectivePercent / 100);
 
@@ -502,8 +503,31 @@
                     calcBasePercent: basePercent,
                     calcDeductionPercent: deductionPoint, 
                     calcBonusAmount: finalBonusAmount,
-                    calcEffectivePercent: effectivePercent.toFixed(0) // Show as integer mostly
+                    calcEffectivePercent: effectivePercent.toFixed(0)
                 };
+            },
+
+            // Update Bonus from Table Input
+            updateManualBonus(id, newPercent) {
+                const emp = this.data.find(e => e.id === id);
+                if (!emp) return;
+
+                let percent = parseInt(newPercent);
+                if (isNaN(percent)) percent = 0;
+                if (percent < 0) percent = 0;
+
+                // Update local state
+                emp.calcEffectivePercent = percent;
+                emp.calcBonusAmount = (parseFloat(emp.salary) || 0) * (percent / 100);
+
+                // Re-render only stats (no need to re-render table to avoid focus loss)
+                // Actually, let's update the specific bonus amount cell text
+                const bonusAmountEl = document.getElementById(`bonus-amount-${id}`);
+                if (bonusAmountEl) {
+                    bonusAmountEl.innerText = this.formatCurrency(emp.calcBonusAmount);
+                }
+
+                this.calculateStats();
             },
 
             formatCurrency(num) {
@@ -518,7 +542,7 @@
                 cardGrid.innerHTML = '';
 
                 if (!data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">ไม่พบข้อมูล</td></tr>'; 
+                    tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">ไม่พบข้อมูล</td></tr>'; 
                     return;
                 }
 
@@ -529,7 +553,6 @@
                     const noteDisplay = emp.note && emp.note.length > 25 ? emp.note.substring(0, 25) + '...' : emp.note;
                     const noteClass = emp.note ? "text-slate-600" : "text-slate-300 italic";
 
-                    // [แก้ไข] เปลี่ยนวงกลมตัวอักษร เป็นรูปโลโก้
                     tr.innerHTML = `
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
@@ -541,7 +564,20 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${emp.position}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 text-right font-mono">${this.formatCurrency(emp.salary)}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm ${noteClass} relative">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                            <div class="flex flex-col items-center gap-1">
+                                <div class="flex items-center gap-1 justify-center">
+                                    <input type="number" 
+                                           value="${emp.calcEffectivePercent}" 
+                                           min="0" max="100"
+                                           onchange="app.updateManualBonus('${emp.id}', this.value)"
+                                           class="bonus-input w-14 text-center border border-slate-300 rounded px-1 py-0.5 text-sm font-bold text-green-600 focus:ring-1 focus:ring-green-500 focus:outline-none">
+                                    <span class="text-slate-400">%</span>
+                                </div>
+                                <span id="bonus-amount-${emp.id}" class="text-xs text-slate-500 font-mono">${this.formatCurrency(emp.calcBonusAmount)}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm ${noteClass} relative max-w-[150px] truncate" title="${emp.note || ''}">
                              ${emp.note || '-'}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
@@ -560,7 +596,6 @@
                         noteHtml = `<div class="text-xs bg-yellow-50 text-slate-600 p-2 rounded border border-yellow-100 mt-1 truncate"><i class="fa-regular fa-comment-dots mr-1"></i> ${emp.note}</div>`;
                     }
 
-                    // [แก้ไข] ปรับ Mobile Card 
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
                             <div class="flex items-center gap-3">
@@ -577,6 +612,8 @@
                         <div class="grid grid-cols-2 gap-2 text-sm mt-2 border-t border-slate-100 pt-3">
                             <div class="text-slate-500 text-xs">เงินเดือน:</div>
                             <div class="text-right font-bold text-slate-800 text-sm">${this.formatCurrency(emp.salary)}</div>
+                            <div class="text-slate-500 text-xs">โบนัส (${emp.calcEffectivePercent}%):</div>
+                            <div class="text-right font-bold text-green-600 text-sm">${this.formatCurrency(emp.calcBonusAmount)}</div>
                         </div>
                         ${noteHtml}
                         <button onclick="app.showDetail('${emp.id}')" class="mt-1 w-full bg-slate-800 text-white py-2 rounded-lg text-sm hover:bg-slate-700 transition active:scale-95">
@@ -590,17 +627,13 @@
             calculateStats() {
                 const total = this.data.length;
                 const totalSalary = this.data.reduce((sum, item) => sum + (parseFloat(item.salary) || 0), 0);
-                const avgBonus = total > 0 ? (this.data.reduce((sum, item) => sum + parseFloat(item.calcEffectivePercent || 0), 0) / total).toFixed(1) : 0;
-                
-                const avgYears = total > 0 ? (this.data.reduce((sum, item) => {
-                    let y = parseFloat(item.years);
-                    return sum + (isNaN(y) ? 0 : y);
-                }, 0) / total).toFixed(1) : 0;
+                const totalBonusAmount = this.data.reduce((sum, item) => sum + (parseFloat(item.calcBonusAmount) || 0), 0);
+                const grandTotal = totalSalary + totalBonusAmount;
 
                 document.getElementById('stat-total').innerText = total;
                 document.getElementById('stat-salary').innerText = new Intl.NumberFormat('th-TH', { notation: "compact", compactDisplay: "short" }).format(totalSalary);
-                document.getElementById('stat-bonus').innerText = avgBonus + '%';
-                document.getElementById('stat-years').innerText = avgYears + ' ปี';
+                document.getElementById('stat-bonus-amount').innerText = new Intl.NumberFormat('th-TH', { notation: "compact", compactDisplay: "short" }).format(totalBonusAmount);
+                document.getElementById('stat-grand-total').innerText = new Intl.NumberFormat('th-TH', { notation: "compact", compactDisplay: "short" }).format(grandTotal);
             },
 
             filterData(keyword) {
@@ -621,7 +654,6 @@
 
                 this.cancelEdit();
 
-                // [แก้ไข] ตั้งค่ารูปโลโก้ในหน้า Detail
                 document.getElementById('detail-logo').src = this.companyLogo;
 
                 document.getElementById('detail-name').innerText = emp.name;
@@ -636,7 +668,6 @@
                 const newSalary = (parseFloat(emp.salary) || 0) + (parseFloat(emp.increase) || 0);
                 document.getElementById('detail-new-salary').innerText = this.formatCurrency(newSalary);
 
-                // Bonus Breakdown Logic
                 document.getElementById('logic-years-text').innerText = emp.years + " ปี";
                 document.getElementById('logic-base-percent').innerText = emp.calcBasePercent + "%";
                 
@@ -725,7 +756,6 @@
                 }
             },
 
-            // New Function: Sync Bonus
             async syncBonus() {
                 if (!this.currentScriptUrl) {
                      Swal.fire('โหมดตัวอย่าง', 'กรุณาเชื่อมต่อ Google Apps Script ก่อน', 'info');
@@ -741,14 +771,11 @@
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> บันทึก...';
 
-                // สร้างข้อความสรุปการคำนวณ (เพิ่มยอดเงินโบนัสสุทธิ)
                 const bonusMoney = this.formatCurrency(emp.calcBonusAmount);
                 const summaryNote = `โบนัสสุทธิ ${bonusMoney} (${emp.calcEffectivePercent}%) (ฐาน ${emp.calcBasePercent}% - หักไม่มาทำงาน ${emp.leaveDays} วัน คิดเป็น ${emp.calcDeductionPercent}%)`;
                 
-                // ตรวจสอบว่ามีหมายเหตุเดิมไหม ถ้ามีให้ต่อท้าย ถ้าไม่มีให้ใส่ใหม่เลย
                 let newNote = summaryNote;
                 if (emp.note && emp.note.trim() !== "" && !emp.note.includes('โบนัสสุทธิ')) {
-                    // ถ้ามีข้อความเดิมอยู่แล้ว และยังไม่มีคำว่า "โบนัสสุทธิ" ให้คงข้อความเดิมไว้แล้วต่อท้าย
                     newNote = `${emp.note} | ${summaryNote}`;
                 }
 
@@ -757,16 +784,14 @@
                         method: 'POST',
                         body: JSON.stringify({
                             id: this.currentDetailId,
-                            bonusPercent: emp.calcEffectivePercent, // อัปเดต % โบนัส
-                            note: newNote // อัปเดตหมายเหตุด้วย
+                            bonusPercent: emp.calcEffectivePercent, 
+                            note: newNote 
                         })
                     });
 
-                    // Update local data
                     emp.bonusPercent = emp.calcEffectivePercent; 
                     emp.note = newNote;
 
-                    // Update UI (Note Section)
                     document.getElementById('detail-note-text').innerText = newNote;
                     document.getElementById('note-input').value = newNote;
 
