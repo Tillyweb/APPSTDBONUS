@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบข้อมูลพนักงาน (HR Dashboard)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts (Sarabun for Thai) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- SweetAlert2 (For nice alerts) -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        /* Print Styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white;
+                padding: 20px;
+                margin: 0;
+            }
+            .no-print {
+                display: none !important;
+            }
+            @page {
+                size: A4;
+                margin: 1cm;
+            }
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- Navigation Bar -->
+    <nav class="bg-indigo-600 text-white shadow-lg sticky top-0 z-50 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="app.showList()">
+                    <i class="fa-solid fa-users-viewfinder text-2xl"></i>
+                    <span class="font-bold text-xl tracking-wide truncate">HR DataConnect</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="app.refreshData()" class="p-2 hover:bg-indigo-500 rounded-full transition" title="รีเฟรชข้อมูล">
+                        <i class="fa-solid fa-rotate-right" id="refresh-icon"></i>
+                    </button>
+                    <button onclick="app.openSettings()" class="flex items-center gap-2 bg-indigo-700 hover:bg-indigo-800 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium transition shadow-md">
+                        <i class="fa-solid fa-cloud"></i>
+                        <span class="hidden sm:inline">เชื่อมต่อ Script</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 min-h-screen">
+        
+        <!-- Loading State -->
+        <div id="loading" class="hidden flex flex-col items-center justify-center py-20">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+            <p class="text-slate-500">กำลังเชื่อมต่อฐานข้อมูล...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="error-message" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-sm" role="alert">
+            <p class="font-bold">เกิดข้อผิดพลาด</p>
+            <p id="error-text">ไม่สามารถดึงข้อมูลได้</p>
+        </div>
+
+        <!-- VIEW 1: Dashboard / List View -->
+        <div id="view-list" class="transition-opacity duration-300">
+            
+            <!-- Stats Summary (Mobile Optimized: Grid 2x2) -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+                <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4">
+                    <div class="p-2 md:p-3 bg-blue-100 text-blue-600 rounded-lg"><i class="fa-solid fa-users text-lg md:text-xl"></i></div>
+                    <div>
+                        <p class="text-xs md:text-sm text-slate-500">พนักงานทั้งหมด</p>
+                        <h3 class="text-xl md:text-2xl font-bold" id="stat-total">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4">
+                    <div class="p-2 md:p-3 bg-green-100 text-green-600 rounded-lg"><i class="fa-solid fa-money-bill-wave text-lg md:text-xl"></i></div>
+                    <div>
+                        <p class="text-xs md:text-sm text-slate-500">เงินเดือนรวม</p>
+                        <h3 class="text-xl md:text-2xl font-bold" id="stat-salary">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4">
+                    <div class="p-2 md:p-3 bg-orange-100 text-orange-600 rounded-lg"><i class="fa-solid fa-gift text-lg md:text-xl"></i></div>
+                    <div>
+                        <p class="text-xs md:text-sm text-slate-500">โบนัสเฉลี่ย</p>
+                        <h3 class="text-xl md:text-2xl font-bold" id="stat-bonus">0%</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4">
+                    <div class="p-2 md:p-3 bg-purple-100 text-purple-600 rounded-lg"><i class="fa-solid fa-briefcase text-lg md:text-xl"></i></div>
+                    <div>
+                        <p class="text-xs md:text-sm text-slate-500">อายุงานเฉลี่ย</p>
+                        <h3 class="text-xl md:text-2xl font-bold" id="stat-years">0 ปี</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search & Filters -->
+            <div class="flex flex-col sm:flex-row gap-4 mb-6 justify-between items-center sticky top-16 z-30 bg-[#f3f4f6] pb-2 pt-1 md:static md:bg-transparent">
+                <h2 class="text-xl md:text-2xl font-bold text-slate-800 self-start sm:self-center">รายชื่อพนักงาน</h2>
+                <div class="relative w-full sm:w-64 shadow-sm">
+                    <input type="text" id="search-input" placeholder="ค้นหาชื่อ, ตำแหน่ง..." 
+                           class="w-full pl-10 pr-4 py-2.5 md:py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm md:text-base">
+                    <i class="fa-solid fa-search absolute left-3 top-3 md:top-3 text-slate-400"></i>
+                </div>
+            </div>
+
+            <!-- Desktop Table View -->
+            <div class="hidden md:block bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
+                <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ชื่อ-นามสกุล</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ตำแหน่ง</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">เงินเดือน</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-1/4">หมายเหตุ</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-slate-200" id="table-body">
+                        <!-- JS renders rows here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Card View (Optimized) -->
+            <div class="md:hidden grid grid-cols-1 gap-3" id="card-grid">
+                <!-- JS renders cards here -->
+            </div>
+        </div>
+
+        <!-- VIEW 2: Detail / Print View -->
+        <div id="view-detail" class="hidden">
+            <div class="mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 no-print">
+                <button onclick="app.showList()" class="flex items-center gap-2 text-slate-600 hover:text-indigo-600 transition font-medium text-sm md:text-base">
+                    <i class="fa-solid fa-arrow-left"></i> ย้อนกลับ
+                </button>
+                <div class="flex gap-2 w-full md:w-auto">
+                    <button onclick="app.enableEditMode()" id="btn-edit-note" class="flex-1 md:flex-none justify-center bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg shadow-md transition flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-pen-to-square"></i> แก้ไขหมายเหตุ
+                    </button>
+                    <button onclick="window.print()" class="flex-1 md:flex-none justify-center bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-print"></i> พิมพ์ / PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Printable Area -->
+            <div id="print-area" class="bg-white shadow-lg rounded-xl p-4 md:p-8 max-w-4xl mx-auto border border-slate-200">
+                
+                <!-- Header Report -->
+                <div class="border-b-2 border-slate-800 pb-6 mb-8 flex flex-col md:flex-row justify-between items-start gap-4">
+                    <div>
+                        <!-- เพิ่มชื่อบริษัทตรงนี้ -->
+                        <h2 class="text-base md:text-lg font-bold text-indigo-900 uppercase tracking-wider mb-1">S.T.D. DENTAL LAB LIMITED PARTNERSHIP</h2>
+                        <h1 class="text-2xl md:text-3xl font-bold text-slate-800 mb-2">สรุปข้อมูลพนักงาน</h1>
+                        <p class="text-sm md:text-base text-slate-500">เอกสารสรุปผลตอบแทนและสวัสดิการประจำปี</p>
+                    </div>
+                    <div class="text-left md:text-right w-full md:w-auto">
+                        <div class="bg-slate-100 px-4 py-2 rounded text-sm font-bold text-slate-600 mb-1 inline-block">CONFIDENTIAL</div>
+                        <p class="text-sm text-slate-400" id="print-date"></p>
+                    </div>
+                </div>
+
+                <!-- Profile Section -->
+                <div class="flex flex-col sm:flex-row gap-6 md:gap-8 mb-8 items-center sm:items-start">
+                    <!-- แก้ไข: เปลี่ยนจาก Div วงกลม เป็น Img สำหรับโลโก้ -->
+                    <div class="w-24 h-24 md:w-32 md:h-32 flex-shrink-0 bg-white rounded-full p-2 shadow-md border border-slate-200 flex items-center justify-center overflow-hidden">
+                        <!-- รูปโลโก้จะแสดงตรงนี้ -->
+                        <img id="detail-logo" src="" alt="Company Logo" class="w-full h-full object-contain">
+                    </div>
+                    <div class="flex-1 text-center sm:text-left w-full">
+                        <h2 class="text-xl md:text-2xl font-bold text-slate-800 mb-1" id="detail-name">-</h2>
+                        <p class="text-base md:text-lg text-indigo-600 font-medium mb-4" id="detail-position">-</p>
+                        <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm text-slate-600">
+                            <div class="flex justify-between border-b border-dotted border-slate-300 pb-1">
+                                <span>รหัสพนักงาน:</span> <span class="font-semibold text-slate-800" id="detail-id">-</span>
+                            </div>
+                            <div class="flex justify-between border-b border-dotted border-slate-300 pb-1">
+                                <span>อายุงาน:</span> <span class="font-semibold text-slate-800" id="detail-years">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Financial Table -->
+                <div class="mb-8">
+                    <h3 class="text-base md:text-lg font-bold text-slate-800 mb-4 border-l-4 border-indigo-500 pl-3">รายละเอียดผลตอบแทน</h3>
+                    <div class="overflow-hidden rounded-lg border border-slate-200">
+                        <table class="min-w-full divide-y divide-slate-200">
+                            <tbody class="divide-y divide-slate-200 bg-white">
+                                <tr>
+                                    <td class="px-4 md:px-6 py-3 md:py-4 text-sm text-slate-600">เงินเดือนปัจจุบัน (Base Salary)</td>
+                                    <td class="px-4 md:px-6 py-3 md:py-4 text-sm font-bold text-right text-slate-800" id="detail-salary">-</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 md:px-6 py-3 md:py-4 text-sm text-slate-600">ค่าครองชีพ/ชำนาญการ (Allowance)</td>
+                                    <td class="px-4 md:px-6 py-3 md:py-4 text-sm font-bold text-right text-slate-800" id="detail-allowance">-</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 md:px-6 py-3 md:py-4 text-sm text-slate-600">ปรับเงินเดือนเพิ่ม (Increase)</td>
+                                    <td class="px-4 md:px-6 py-3 md:py-4 text-sm font-bold text-right text-green-600" id="detail-increase">-</td>
+                                </tr>
+                                <tr class="bg-indigo-50">
+                                    <td class="px-4 md:px-6 py-3 md:py-4 text-sm font-bold text-indigo-900">ฐานเงินเดือนใหม่ (New Base)</td>
+                                    <td class="px-4 md:px-6 py-3 md:py-4 text-sm font-bold text-right text-indigo-900" id="detail-new-salary">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Bonus & Leave Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-slate-50 p-4 md:p-6 rounded-lg border border-slate-200 relative group">
+                        <h4 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-gift text-orange-500"></i> การคำนวณโบนัส
+                        </h4>
+                        
+                        <!-- Bonus Logic Display -->
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between text-slate-600">
+                                <span>ฐานโบนัส (อายุงาน <span id="logic-years-text"></span>):</span>
+                                <span class="font-semibold text-slate-800" id="logic-base-percent">0%</span>
+                            </div>
+                            <div class="flex justify-between text-red-500">
+                                <span>หักวันไม่มาทำงาน (<span id="logic-leave-text"></span>):</span>
+                                <span class="font-semibold" id="logic-deduct-percent">-0%</span>
+                            </div>
+                            <div class="border-t border-slate-200 my-2 pt-2 flex justify-between items-end">
+                                <span class="text-slate-500">ยอดโบนัสสุทธิ</span>
+                                <span class="text-lg md:text-xl font-bold text-orange-600" id="detail-bonus-amount">-</span>
+                            </div>
+                            <div class="flex justify-between items-center mt-2 flex-wrap gap-2">
+                                <div class="text-xs text-slate-400">
+                                    (คิดเป็น <span id="detail-bonus-effective">0</span>% ของเงินเดือน)
+                                </div>
+                                <button onclick="app.syncBonus()" id="btn-sync-bonus" class="bg-green-100 hover:bg-green-200 text-green-700 text-xs px-2 py-1 rounded transition no-print flex items-center gap-1 border border-green-200 ml-auto">
+                                    <i class="fa-solid fa-cloud-arrow-up"></i> บันทึกลง Sheet
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-50 p-4 md:p-6 rounded-lg border border-slate-200">
+                        <h4 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-check text-blue-500"></i> สถิติการไม่มาทำงาน
+                        </h4>
+                        <div class="flex justify-between items-center h-full pb-2">
+                            <span class="text-sm text-slate-500">วันไม่มาทำงานรวมทั้งปี</span>
+                            <div class="text-right">
+                                <span class="text-2xl md:text-3xl font-bold text-slate-800" id="detail-leave">-</span>
+                                <span class="text-sm text-slate-500">วัน</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Note Section (Editable) -->
+                <div id="detail-note-container" class="mb-8">
+                    <h3 class="text-base md:text-lg font-bold text-slate-800 mb-2 border-l-4 border-yellow-400 pl-3">หมายเหตุ</h3>
+                    
+                    <!-- Display Mode -->
+                    <div id="note-display-mode" class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-slate-700 italic min-h-[60px] text-sm">
+                        <span id="detail-note-text">-</span>
+                    </div>
+
+                    <!-- Edit Mode -->
+                    <div id="note-edit-mode" class="hidden">
+                        <textarea id="note-input" rows="3" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:outline-none mb-2 text-sm" placeholder="ใส่หมายเหตุที่นี่..."></textarea>
+                        <div class="flex justify-end gap-2">
+                            <button onclick="app.cancelEdit()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded transition text-sm">ยกเลิก</button>
+                            <button onclick="app.saveNote()" id="btn-save-note" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition flex items-center gap-2 text-sm">
+                                <i class="fa-solid fa-save"></i> บันทึก
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reference Criteria Section (New) -->
+                <div class="mt-6 mb-8 pt-6 border-t border-slate-200">
+                    <h4 class="text-sm font-bold text-slate-700 mb-3 bg-slate-100 p-2 rounded inline-block">
+                        <i class="fa-solid fa-circle-info text-slate-500 mr-1"></i> เกณฑ์การพิจารณาโบนัส
+                    </h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs text-slate-600 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                        <!-- Step 1 -->
+                        <div>
+                            <p class="font-bold text-indigo-700 mb-2 border-b border-indigo-100 pb-1">ขั้นที่ 1: ฐานโบนัสตามอายุงาน</p>
+                            <table class="w-full">
+                                <tr class="border-b border-slate-200"><td class="py-1">อายุงานน้อยกว่า 1 ปี</td><td class="text-right font-medium">0%</td></tr>
+                                <tr class="border-b border-slate-200"><td class="py-1">อายุงาน 1 ปีขึ้นไป</td><td class="text-right font-medium">40%</td></tr>
+                                <tr class="border-b border-slate-200"><td class="py-1">อายุงาน 2 ปีขึ้นไป</td><td class="text-right font-medium">50%</td></tr>
+                                <tr><td class="py-1">อายุงาน 3 ปีขึ้นไป</td><td class="text-right font-medium">60%</td></tr>
+                            </table>
+                        </div>
+                        
+                        <!-- Step 2 -->
+                        <div>
+                            <p class="font-bold text-red-600 mb-2 border-b border-red-100 pb-1">ขั้นที่ 2: หักเปอร์เซ็นต์ตามวันไม่มาทำงาน</p>
+                            <div class="grid grid-cols-2 gap-x-4">
+                                <table class="w-full">
+                                    <tr class="border-b border-slate-200"><td class="py-1">0-10 วัน</td><td class="text-right text-slate-400">ไม่หัก</td></tr>
+                                    <tr class="border-b border-slate-200"><td class="py-1">11-12 วัน</td><td class="text-right text-red-500 font-medium">-15%</td></tr>
+                                    <tr class="border-b border-slate-200"><td class="py-1">13-15 วัน</td><td class="text-right text-red-500 font-medium">-20%</td></tr>
+                                    <tr class="border-b border-slate-200"><td class="py-1">16-18 วัน</td><td class="text-right text-red-500 font-medium">-25%</td></tr>
+                                    <tr><td class="py-1">19-21 วัน</td><td class="text-right text-red-500 font-medium">-30%</td></tr>
+                                </table>
+                                <table class="w-full">
+                                    <tr class="border-b border-slate-200"><td class="py-1">22-24 วัน</td><td class="text-right text-red-500 font-medium">-40%</td></tr>
+                                    <tr class="border-b border-slate-200"><td class="py-1">25-27 วัน</td><td class="text-right text-red-500 font-medium">-50%</td></tr>
+                                    <tr class="border-b border-slate-200"><td class="py-1">28-30 วัน</td><td class="text-right text-red-500 font-medium">-55%</td></tr>
+                                    <tr><td class="py-1">31 วันขึ้นไป</td><td class="text-right text-red-500 font-medium">-60%</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Signature -->
+                <div class="mt-8 pt-8 border-t-2 border-slate-800 flex justify-between text-xs text-slate-400">
+                    <p>Generated by HR DataConnect System</p>
+                    <p>ลายเซ็นผู้ตรวจสอบ .......................................................</p>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100">
+            <h3 class="text-xl font-bold mb-4 text-slate-800">ตั้งค่าการเชื่อมต่อ (Apps Script)</h3>
+            <p class="text-sm text-slate-500 mb-4">
+                เพื่อเปิดใช้งานการแก้ไขข้อมูล คุณต้องนำ <b>Web App URL</b> จากการ Deploy Google Apps Script มาวางที่นี่
+            </p>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Google Apps Script Web App URL</label>
+                <input type="text" id="script-url-input" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="https://script.google.com/macros/s/...">
+            </div>
+            <div class="flex justify-end gap-3">
+                <button onclick="app.closeSettings()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition">ยกเลิก</button>
+                <button onclick="app.saveSettings()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">บันทึก & เชื่อมต่อ</button>
+            </div>
+            
+            <div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-400">
+                <p><i class="fa-solid fa-circle-info"></i> ตรวจสอบว่าตั้งค่าการ Deploy เป็น "Anyone" (ทุกคน) แล้ว</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        const app = {
+            data: [],
+            // Default Demo Data (for first time user)
+            currentScriptUrl: localStorage.getItem('hr_script_url') || 'https://script.google.com/macros/s/AKfycbzTdJPNufKF0cGr7ldQ4sEZffijESKivUOfs1ALat45-tkPeWFlrpdiFykXhUFdNsQWrg/exec',
+            
+            // [แก้ไข] ใส่ URL โลโก้ของคุณที่นี่ (หรือใช้ Link รูปภาพออนไลน์)
+            companyLogo: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png', 
+
+            demoData: [
+                { id: "EMP001", name: "สมชาย ตัวอย่าง", position: "ผู้จัดการ (Demo)", salary: 50000, allowance: 5000, years: "8", leaveDays: 5, increase: 2500, note: "ข้อมูลตัวอย่าง (ยังไม่ได้เชื่อมต่อ)" },
+                { id: "EMP002", name: "วาริน ตัวอย่าง", position: "โปรแกรมเมอร์ (Demo)", salary: 35000, allowance: 3000, years: "2", leaveDays: 13, increase: 1800, note: "ลาป่วยบ่อย" }
+            ],
+
+            currentDetailId: null,
+
+            init() {
+                // Initialize search listener
+                document.getElementById('search-input').addEventListener('input', (e) => this.filterData(e.target.value));
+                
+                // Set print date
+                const today = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+                document.getElementById('print-date').innerText = `วันที่พิมพ์: ${today}`;
+
+                // Fetch data on load
+                this.refreshData();
+            },
+
+            async refreshData() {
+                const icon = document.getElementById('refresh-icon');
+                const loading = document.getElementById('loading');
+                const errorMsg = document.getElementById('error-message');
+                
+                icon.classList.add('fa-spin');
+                loading.classList.remove('hidden');
+                errorMsg.classList.add('hidden');
+                document.getElementById('view-list').classList.add('opacity-50');
+
+                try {
+                    let rawData = [];
+                    if (!this.currentScriptUrl) {
+                        console.log("Using Demo Data");
+                        rawData = this.demoData;
+                        await new Promise(r => setTimeout(r, 500));
+                    } else {
+                        const response = await fetch(this.currentScriptUrl);
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        rawData = await response.json();
+                    }
+
+                    // Calculate Bonus for each employee
+                    this.data = rawData.map(emp => {
+                        const bonusInfo = this.calculateBonus(emp.salary, emp.years, emp.leaveDays);
+                        return { ...emp, ...bonusInfo };
+                    });
+
+                    this.renderData(this.data);
+                    this.calculateStats();
+                    
+                } catch (error) {
+                    console.error('Error fetching data:', error);
+                    errorMsg.classList.remove('hidden');
+                    document.getElementById('error-text').innerText = 'ไม่สามารถดึงข้อมูลได้ โปรดตรวจสอบ Script URL หรือการตั้งค่า Deploy (Anyone)';
+                } finally {
+                    icon.classList.remove('fa-spin');
+                    loading.classList.add('hidden');
+                    document.getElementById('view-list').classList.remove('opacity-50');
+                }
+            },
+
+            // New Bonus Logic
+            calculateBonus(salaryStr, yearsStr, leaveDaysStr) {
+                const salary = parseFloat(salaryStr) || 0;
+                const years = parseFloat(yearsStr) || 0;
+                const leave = parseInt(leaveDaysStr) || 0;
+
+                // 1. Base Bonus % based on Years
+                let basePercent = 0;
+                if (years >= 3) basePercent = 60;
+                else if (years >= 2) basePercent = 50;
+                else if (years >= 1) basePercent = 40;
+                else basePercent = 0;
+
+                // 2. Deduction % based on Leave Days (Subtract directly from Base Percent)
+                let deductionPoint = 0;
+                if (leave > 30) deductionPoint = 60;      // > 30 (covers 31+)
+                else if (leave >= 28) deductionPoint = 55; // 28-30
+                else if (leave >= 25) deductionPoint = 50; // 25-27
+                else if (leave >= 22) deductionPoint = 40; // 22-24
+                else if (leave >= 19) deductionPoint = 30; // 19-21
+                else if (leave >= 16) deductionPoint = 25; // 16-18
+                else if (leave >= 13) deductionPoint = 20; // 13-15
+                else if (leave > 10) deductionPoint = 15;  // 11-12 (More than 10)
+                else deductionPoint = 0;                   // 0-10
+
+                // 3. Calculation
+                // Formula: Bonus = Salary * (Base% - Deduction%)
+                let effectivePercent = basePercent - deductionPoint;
+                if (effectivePercent < 0) effectivePercent = 0; // Prevent negative bonus
+
+                const finalBonusAmount = salary * (effectivePercent / 100);
+
+                return {
+                    calcBasePercent: basePercent,
+                    calcDeductionPercent: deductionPoint, 
+                    calcBonusAmount: finalBonusAmount,
+                    calcEffectivePercent: effectivePercent.toFixed(0) // Show as integer mostly
+                };
+            },
+
+            formatCurrency(num) {
+                return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(num);
+            },
+
+            renderData(data) {
+                const tbody = document.getElementById('table-body');
+                const cardGrid = document.getElementById('card-grid');
+                
+                tbody.innerHTML = '';
+                cardGrid.innerHTML = '';
+
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">ไม่พบข้อมูล</td></tr>'; 
+                    return;
+                }
+
+                data.forEach(emp => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50 transition group";
+                    
+                    const noteDisplay = emp.note && emp.note.length > 25 ? emp.note.substring(0, 25) + '...' : emp.note;
+                    const noteClass = emp.note ? "text-slate-600" : "text-slate-300 italic";
+
+                    // [แก้ไข] เปลี่ยนวงกลมตัวอักษร เป็นรูปโลโก้
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-white border border-slate-200 p-1 flex items-center justify-center mr-3 overflow-hidden">
+                                    <img src="${this.companyLogo}" class="w-full h-full object-contain" alt="Logo">
+                                </div>
+                                <div class="text-sm font-medium text-slate-900">${emp.name}</div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${emp.position}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 text-right font-mono">${this.formatCurrency(emp.salary)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm ${noteClass} relative">
+                             ${emp.note || '-'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                            <button onclick="app.showDetail('${emp.id}')" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded transition">
+                                <i class="fa-solid fa-pen-to-square"></i> ดู/แก้ไข
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    const card = document.createElement('div');
+                    card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-3";
+                    
+                    let noteHtml = '';
+                    if (emp.note) {
+                        noteHtml = `<div class="text-xs bg-yellow-50 text-slate-600 p-2 rounded border border-yellow-100 mt-1 truncate"><i class="fa-regular fa-comment-dots mr-1"></i> ${emp.note}</div>`;
+                    }
+
+                    // [แก้ไข] ปรับ Mobile Card 
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div class="flex items-center gap-3">
+                                <div class="h-10 w-10 rounded-full bg-white border border-slate-200 p-1 flex-shrink-0">
+                                    <img src="${this.companyLogo}" class="w-full h-full object-contain" alt="Logo">
+                                </div>
+                                <div class="min-w-0">
+                                    <h3 class="font-bold text-base text-slate-800 truncate pr-2">${emp.name}</h3>
+                                    <p class="text-xs text-slate-500 truncate">${emp.position}</p>
+                                </div>
+                            </div>
+                            <span class="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap border border-indigo-100">${emp.id}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-sm mt-2 border-t border-slate-100 pt-3">
+                            <div class="text-slate-500 text-xs">เงินเดือน:</div>
+                            <div class="text-right font-bold text-slate-800 text-sm">${this.formatCurrency(emp.salary)}</div>
+                        </div>
+                        ${noteHtml}
+                        <button onclick="app.showDetail('${emp.id}')" class="mt-1 w-full bg-slate-800 text-white py-2 rounded-lg text-sm hover:bg-slate-700 transition active:scale-95">
+                            ดูรายละเอียด / แก้ไข
+                        </button>
+                    `;
+                    cardGrid.appendChild(card);
+                });
+            },
+
+            calculateStats() {
+                const total = this.data.length;
+                const totalSalary = this.data.reduce((sum, item) => sum + (parseFloat(item.salary) || 0), 0);
+                const avgBonus = total > 0 ? (this.data.reduce((sum, item) => sum + parseFloat(item.calcEffectivePercent || 0), 0) / total).toFixed(1) : 0;
+                
+                const avgYears = total > 0 ? (this.data.reduce((sum, item) => {
+                    let y = parseFloat(item.years);
+                    return sum + (isNaN(y) ? 0 : y);
+                }, 0) / total).toFixed(1) : 0;
+
+                document.getElementById('stat-total').innerText = total;
+                document.getElementById('stat-salary').innerText = new Intl.NumberFormat('th-TH', { notation: "compact", compactDisplay: "short" }).format(totalSalary);
+                document.getElementById('stat-bonus').innerText = avgBonus + '%';
+                document.getElementById('stat-years').innerText = avgYears + ' ปี';
+            },
+
+            filterData(keyword) {
+                const lowerKey = keyword.toLowerCase();
+                const filtered = this.data.filter(item => 
+                    (item.name && item.name.toLowerCase().includes(lowerKey)) || 
+                    (item.position && item.position.toLowerCase().includes(lowerKey)) ||
+                    (item.id && String(item.id).toLowerCase().includes(lowerKey)) ||
+                    (item.note && item.note.toLowerCase().includes(lowerKey))
+                );
+                this.renderData(filtered);
+            },
+
+            showDetail(id) {
+                this.currentDetailId = id;
+                const emp = this.data.find(e => e.id === id);
+                if (!emp) return;
+
+                this.cancelEdit();
+
+                // [แก้ไข] ตั้งค่ารูปโลโก้ในหน้า Detail
+                document.getElementById('detail-logo').src = this.companyLogo;
+
+                document.getElementById('detail-name').innerText = emp.name;
+                document.getElementById('detail-position').innerText = emp.position;
+                document.getElementById('detail-id').innerText = emp.id;
+                document.getElementById('detail-years').innerText = emp.years + ' ปี';
+                
+                document.getElementById('detail-salary').innerText = this.formatCurrency(emp.salary);
+                document.getElementById('detail-allowance').innerText = this.formatCurrency(emp.allowance);
+                document.getElementById('detail-increase').innerText = '+ ' + this.formatCurrency(emp.increase);
+                
+                const newSalary = (parseFloat(emp.salary) || 0) + (parseFloat(emp.increase) || 0);
+                document.getElementById('detail-new-salary').innerText = this.formatCurrency(newSalary);
+
+                // Bonus Breakdown Logic
+                document.getElementById('logic-years-text').innerText = emp.years + " ปี";
+                document.getElementById('logic-base-percent').innerText = emp.calcBasePercent + "%";
+                
+                document.getElementById('logic-leave-text').innerText = emp.leaveDays + " วัน";
+                document.getElementById('logic-deduct-percent').innerText = "-" + emp.calcDeductionPercent + "%";
+
+                document.getElementById('detail-bonus-amount').innerText = this.formatCurrency(emp.calcBonusAmount);
+                document.getElementById('detail-bonus-effective').innerText = emp.calcEffectivePercent;
+
+                document.getElementById('detail-leave').innerText = emp.leaveDays;
+
+                const noteText = document.getElementById('detail-note-text');
+                noteText.innerText = emp.note && emp.note.trim() !== "" ? emp.note : "- ไม่มีหมายเหตุ -";
+                document.getElementById('note-input').value = emp.note || "";
+
+                document.getElementById('view-list').classList.add('hidden');
+                document.getElementById('view-detail').classList.remove('hidden');
+                window.scrollTo(0, 0);
+            },
+
+            showList() {
+                document.getElementById('view-detail').classList.add('hidden');
+                document.getElementById('view-list').classList.remove('hidden');
+            },
+
+            enableEditMode() {
+                if (!this.currentScriptUrl) {
+                    Swal.fire('โหมดตัวอย่าง', 'กรุณาเชื่อมต่อ Google Apps Script ก่อนเพื่อใช้งานฟีเจอร์นี้', 'info');
+                    return;
+                }
+                document.getElementById('note-display-mode').classList.add('hidden');
+                document.getElementById('note-edit-mode').classList.remove('hidden');
+                document.getElementById('btn-edit-note').classList.add('hidden');
+                document.getElementById('note-input').focus();
+            },
+
+            cancelEdit() {
+                const displayMode = document.getElementById('note-display-mode');
+                const editMode = document.getElementById('note-edit-mode');
+                const btnEdit = document.getElementById('btn-edit-note');
+
+                if (displayMode) displayMode.classList.remove('hidden');
+                if (editMode) editMode.classList.add('hidden');
+                if (btnEdit) btnEdit.classList.remove('hidden');
+            },
+
+            async saveNote() {
+                const newNote = document.getElementById('note-input').value;
+                const btnSave = document.getElementById('btn-save-note');
+                const originalText = btnSave.innerHTML;
+
+                btnSave.disabled = true;
+                btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> บันทึก...';
+
+                try {
+                    await fetch(this.currentScriptUrl, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            id: this.currentDetailId,
+                            note: newNote
+                        })
+                    });
+
+                    const empIndex = this.data.findIndex(e => e.id === this.currentDetailId);
+                    if (empIndex !== -1) {
+                        this.data[empIndex].note = newNote;
+                    }
+
+                    document.getElementById('detail-note-text').innerText = newNote || "- ไม่มีหมายเหตุ -";
+                    this.cancelEdit();
+                    this.renderData(this.data);
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกเรียบร้อย',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+
+                } catch (error) {
+                    console.error("Save error", error);
+                    Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลไปยัง Google Sheet ได้', 'error');
+                } finally {
+                    btnSave.disabled = false;
+                    btnSave.innerHTML = originalText;
+                }
+            },
+
+            // New Function: Sync Bonus
+            async syncBonus() {
+                if (!this.currentScriptUrl) {
+                     Swal.fire('โหมดตัวอย่าง', 'กรุณาเชื่อมต่อ Google Apps Script ก่อน', 'info');
+                     return;
+                }
+
+                const emp = this.data.find(e => e.id === this.currentDetailId);
+                if (!emp) return;
+
+                const btn = document.getElementById('btn-sync-bonus');
+                const originalText = btn.innerHTML;
+                
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> บันทึก...';
+
+                // สร้างข้อความสรุปการคำนวณ (เพิ่มจำนวนวันไม่มาทำงาน)
+                const summaryNote = `โบนัสสุทธิ ${emp.calcEffectivePercent}% (ฐาน ${emp.calcBasePercent}% - หักไม่มาทำงาน ${emp.leaveDays} วัน คิดเป็น ${emp.calcDeductionPercent}%)`;
+                
+                // ตรวจสอบว่ามีหมายเหตุเดิมไหม ถ้ามีให้ต่อท้าย ถ้าไม่มีให้ใส่ใหม่เลย
+                let newNote = summaryNote;
+                if (emp.note && emp.note.trim() !== "" && !emp.note.includes('โบนัสสุทธิ')) {
+                    // ถ้ามีข้อความเดิมอยู่แล้ว และยังไม่มีคำว่า "โบนัสสุทธิ" ให้คงข้อความเดิมไว้แล้วต่อท้าย
+                    newNote = `${emp.note} | ${summaryNote}`;
+                }
+
+                try {
+                    await fetch(this.currentScriptUrl, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            id: this.currentDetailId,
+                            bonusPercent: emp.calcEffectivePercent, // อัปเดต % โบนัส
+                            note: newNote // อัปเดตหมายเหตุด้วย
+                        })
+                    });
+
+                    // Update local data
+                    emp.bonusPercent = emp.calcEffectivePercent; 
+                    emp.note = newNote;
+
+                    // Update UI (Note Section)
+                    document.getElementById('detail-note-text').innerText = newNote;
+                    document.getElementById('note-input').value = newNote;
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกเรียบร้อย',
+                        text: `อัปเดตโบนัส ${emp.calcEffectivePercent}% และหมายเหตุลง Sheet แล้ว`,
+                        showConfirmButton: false,
+                        timer: 2000
+                    });
+
+                } catch (error) {
+                    console.error("Sync Bonus error", error);
+                    Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            },
+
+            openSettings() {
+                document.getElementById('script-url-input').value = this.currentScriptUrl;
+                document.getElementById('settings-modal').classList.remove('hidden');
+            },
+
+            closeSettings() {
+                document.getElementById('settings-modal').classList.add('hidden');
+            },
+
+            saveSettings() {
+                let input = document.getElementById('script-url-input').value.trim();
+                
+                if (input) {
+                    this.currentScriptUrl = input;
+                    localStorage.setItem('hr_script_url', input);
+                    this.closeSettings();
+                    this.refreshData();
+                } else {
+                    Swal.fire('แจ้งเตือน', 'กรุณาใส่ URL ของ Apps Script', 'warning');
+                }
+            }
+        };
+
+        app.init();
+    </script>
+</body>
+</html>
